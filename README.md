@@ -2,82 +2,131 @@
 
 [![License](https://img.shields.io/badge/license-GPLv2-blue.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/livp123/netxfw)](https://goreportcard.com/report/github.com/livp123/netxfw)
+[![Release](https://img.shields.io/github/v/release/livp123/netxfw)](https://github.com/livp123/netxfw/releases)
 
-> **轻量 · 可扩 · 一令封网**  
-> 基于 eBPF/XDP 的高性能主机防火墙，专为中小团队设计。  
-> 无需 iptables，无需复杂配置，5 分钟部署，秒级阻断 SSH 暴力破解、端口扫描等攻击。
+> **轻量 · 高性能 · 易扩展**  
+> 基于 eBPF/XDP 的下一代 Linux 主机防火墙。
+
+`netxfw` 是一款利用现代 Linux 内核 eBPF 技术构建的高性能防火墙。它在网络驱动层（XDP）直接处理数据包，能够以极低的 CPU 开销阻断大规模 DDoS 攻击、暴力破解和非法扫描。
 
 ---
 
-## ✨ 为什么选择 netxfw？
+## ✨ 核心特性
 
-- ✅ **极致性能**：在网卡驱动层丢包（XDP），CPU 开销 <1%，支持百万 PPS  
-- ✅ **全协议支持**：完美支持 IPv4 & IPv6 流量阻断  
-- ✅ **智能多网卡**：自动保护所有物理网卡，跳过 `lo`/`docker0` 等虚拟接口  
-- ✅ **实时统计**：精确记录每个封禁 IP 的丢包次数  
-- ✅ **可观测**：内置 Prometheus 指标，轻松对接 Grafana  
-- ✅ **可扩展**：YAML 规则 + 命令行实时控制
+- 🚀 **极致性能**：在网卡驱动层（XDP）直接丢弃恶意包，绕过内核网络栈，CPU 占用极低。
+- 🌍 **全协议支持**：原生支持 IPv4 和 IPv6，支持 CIDR 网段封禁。
+- 🧠 **智能检测**：自动识别所有物理网卡，无需手动配置接口名称。
+- 📊 **可观测性**：内置 Prometheus Exporter，实时监控丢包速率与流量趋势。
+- 🛠️ **一令封网**：极简的 CLI 操作，支持动态加载规则，无需重启服务。
+- 📦 **云原生友好**：支持 YAML 配置，易于与现有运维体系集成。
+
+---
+
+## 🏗️ 架构概览
+
+`netxfw` 由两部分组成：
+1.  **内核态 (eBPF/XDP)**：高性能数据面，负责根据白名单和锁定列表进行极速过滤。
+2.  **用户态 (Go)**：控制面，负责规则解析、网卡管理、API 服务及 Prometheus 指标暴露。
 
 ---
 
 ## 🚀 快速开始
 
-### 1. 构建
+### 1. 安装方式
 
-#### 环境要求
-在构建之前，请确保您的系统已安装以下依赖（以 Ubuntu/Debian 为例）：
+#### 方式 A：直接下载二进制文件（推荐）
+从 [Releases](https://github.com/livp123/netxfw/releases) 页面下载适用于您架构的最新版本：
 ```bash
-sudo apt-get update
-sudo apt-get install -y clang llvm libelf-dev libbpf-dev gcc-multilib make
+# 以 amd64 为例
+wget https://github.com/livp123/netxfw/releases/download/v0.1.8/netxfw_Linux_x86_64.tar.gz
+tar -zxvf netxfw_Linux_x86_64.tar.gz
+sudo mv netxfw /usr/local/bin/
 ```
-*注：Go 版本需 >= 1.21*
 
-#### 编译步骤
+#### 方式 B：从源码构建
+**环境要求**：
+- Linux Kernel >= 5.4 (推荐 5.10+)
+- Go >= 1.21
+- `clang`, `llvm`, `libelf-dev`, `libbpf-dev`, `make`
+
+**编译步骤**：
 ```bash
-# 1. 克隆
 git clone https://github.com/livp123/netxfw.git
 cd netxfw
-
-# 2. 生成 eBPF 字节码并构建二进制文件
 make generate
 make build
+sudo make install
 ```
 
-# 3. 安装 (创建 /etc/netxfw/ 目录并配置默认文件)
-sudo make install
+### 2. 运行与配置
 
-### 2. 使用方法
-
-#### 启动防火墙服务
-默认会加载 `/etc/netxfw/config.yaml`。
+#### 启动服务
 ```bash
+# 启动 XDP 防火墙引擎
 sudo netxfw load xdp
 ```
 
-#### 配置说明
-在 `/etc/netxfw/config.yaml` 中，你可以提前配置：
-- `whitelist`: 白名单列表，支持单个 IP 或 CIDR 网段（例如 `192.168.1.0/24`）
-- `metrics_port`: Prometheus 指标服务端口（默认 9100）
-- `rules`: 动态拦截规则
+#### 配置文件示例 (`/etc/netxfw/config.yaml`)
+```yaml
+# 监控指标端口
+metrics_port: 9100
 
-#### 封禁 IP (支持 IPv4/IPv6)
-```bash
-sudo ./netxfw lock 1.2.3.4
-sudo ./netxfw lock 2001:db8::1
+# 静态白名单 (永不拦截)
+whitelist:
+  - 127.0.0.1
+  - 192.168.1.0/24
+  - ::1
+
+# 动态规则定义 (即将支持)
+rules:
+  - name: "ssh-brute-force"
+    port: 22
+    threshold: 10
+    duration: 1h
 ```
 
-#### 查看封禁列表及统计
-```bash
-sudo ./netxfw list
-```
+### 3. 常用操作
 
-#### 解封 IP
-```bash
-sudo ./netxfw unlock 1.2.3.4
-```
+| 命令 | 说明 | 示例 |
+| :--- | :--- | :--- |
+| `lock` | 封禁指定 IP/网段 | `sudo netxfw lock 1.2.3.4` |
+| `unlock` | 解封指定 IP/网段 | `sudo netxfw unlock 1.2.3.4` |
+| `list` | 查看当前封禁列表及统计 | `sudo netxfw list` |
+| `status` | 查看防火墙运行状态 | `sudo netxfw status` |
 
 ---
 
-## 📖 详细文档
-- [命令行手册](docs/cli.md)
-- [系统架构](docs/architecture.md)
+## 📈 监控集成
+
+`netxfw` 默认在 `9100` 端口暴露 Prometheus 指标。
+
+**关键指标**：
+- `netxfw_xdp_drop_total`: 被防火墙拦截的总包数。
+- `netxfw_xdp_pass_total`: 通过防火墙的总包数。
+- `netxfw_locked_ips_count`: 当前被封禁的 IP 数量。
+
+您可以在 Grafana 中轻松配置仪表盘，实时观测攻击情况。
+
+---
+
+## 🗺️ 路线图 (Roadmap)
+
+- [x] 核心 XDP 过滤引擎 (IPv4/IPv6)
+- [x] CLI 动态封禁/解封
+- [x] Prometheus 指标暴露
+- [ ] 自动化攻击检测引擎 (基于日志/流量)
+- [ ] Web 控制台
+- [ ] 分布式协同防护 (多机联动)
+
+---
+
+## 🤝 贡献指南
+
+我们非常欢迎任何形式的贡献！无论是提交 Issue、修复 Bug 还是完善文档。
+请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) (即将推出)。
+
+---
+
+## 📄 开源协议
+
+本项目采用 [GPL-2.0](LICENSE) 协议开源。
