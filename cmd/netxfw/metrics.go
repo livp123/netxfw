@@ -16,5 +16,5 @@ var (
 )
 
 func UpdateMetrics(count uint64) {
-	blockedTotal.WithLabelValues("blacklist").Set(float64(count))
+	blockedTotal.WithLabelValues("lock").Set(float64(count))
 }

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -58,6 +60,12 @@ func main() {
 	case "list":
 		// List blocked ranges / 查看封禁列表
 		showLockList()
+	case "import":
+		// Import lock list from file / 从文件导入锁定列表
+		if len(os.Args) < 3 {
+			log.Fatal("❌ Missing file path")
+		}
+		importLockListFromFile(os.Args[2])
 	case "unload":
 		// Unload XDP program / 卸载 XDP 程序
 		if len(os.Args) < 3 || os.Args[2] != "xdp" {
@@ -80,6 +88,7 @@ func usage() {
 	fmt.Println("  ./netxfw lock 1.2.3.4    # 封禁 IP 或网段 (如 192.168.1.0/24)")
 	fmt.Println("  ./netxfw unlock 1.2.3.4  # 解封 IP 或网段")
 	fmt.Println("  ./netxfw list            # 查看封禁 IP 列表及拦截统计")
+	fmt.Println("  ./netxfw import file.txt # 从文件导入锁定列表 IP 列表")
 	fmt.Println("  ./netxfw unload xdp      # 卸载 XDP 程序")
 }
 
@@ -153,14 +162,28 @@ func runServer() {
 		}
 	}
 
-	// Load locked ranges from config / 从配置中加载封禁网段
-	// (Note: Currently 'rules' in YAML are for dynamic detection,
-	// not static IP list. This section is a placeholder for static blocklist if needed.)
-	/*
-		if cfg != nil && len(cfg.Rules) > 0 {
-			// ... implementation ...
+	// Load locked ranges from config or file / 从配置或文件中加载封禁网段
+	if cfg != nil {
+		lockListPath := cfg.LockListFile
+		// If not specified in config, check default path / 如果配置中未指定，则检查默认路径
+		if lockListPath == "" {
+			defaultPath := "/etc/netxfw/lock.conf"
+			if _, err := os.Stat(defaultPath); err == nil {
+				lockListPath = defaultPath
+			}
 		}
-	*/
+
+		if lockListPath != "" {
+			loadLockListFromFile(manager, lockListPath)
+		}
+
+		// 2. Load from rules (future expansion) / 从规则中加载（后续扩展）
+		/*
+			if len(cfg.Rules) > 0 {
+				// ...
+			}
+		*/
+	}
 
 	// Start Prometheus metrics server / 启动 Prometheus 指标服务
 	go func() {
@@ -270,4 +293,97 @@ func unloadXDP() {
 	// Cleanup is handled by the server process on exit.
 	// 卸载由服务器进程退出时自动处理。
 	fmt.Println("Please stop the running 'load xdp' server (e.g., Ctrl+C) to trigger cleanup.")
+}
+
+/**
+ * loadLockListFromFile reads IPs/CIDRs from a file and loads them into the BPF map.
+ * loadLockListFromFile 从文件中读取 IP/CIDR 并加载到 BPF Map 中。
+ */
+func loadLockListFromFile(manager *xdp.Manager, filePath string) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		log.Printf("⚠️ Failed to open lock list file %s: %v", filePath, err)
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	count := 0
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		var targetMap *ebpf.Map
+		if !isIPv6(line) {
+			targetMap = manager.LockList()
+		} else {
+			targetMap = manager.LockList6()
+		}
+
+		if err := xdp.LockIP(targetMap, line); err != nil {
+			log.Printf("❌ Failed to pre-load %s from file: %v", line, err)
+		} else {
+			count++
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("❌ Error reading lock list file %s: %v", filePath, err)
+	}
+
+	log.Printf("🛡️ Pre-loaded %d IPs/ranges from %s", count, filePath)
+}
+
+/**
+ * importLockListFromFile reads IPs/CIDRs from a file and loads them into pinned BPF maps.
+ * importLockListFromFile 从文件中读取 IP/CIDR 并加载到固定的 BPF Map 中。
+ */
+func importLockListFromFile(filePath string) {
+	m4, err := ebpf.LoadPinnedMap("/sys/fs/bpf/netxfw/lock_list", nil)
+	if err != nil {
+		log.Fatalf("❌ Failed to load IPv4 lock list (is the server running?): %v", err)
+	}
+	defer m4.Close()
+
+	m6, err := ebpf.LoadPinnedMap("/sys/fs/bpf/netxfw/lock_list6", nil)
+	if err != nil {
+		log.Fatalf("❌ Failed to load IPv6 lock list (is the server running?): %v", err)
+	}
+	defer m6.Close()
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		log.Fatalf("❌ Failed to open lock list file %s: %v", filePath, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	count := 0
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		var targetMap *ebpf.Map
+		if !isIPv6(line) {
+			targetMap = m4
+		} else {
+			targetMap = m6
+		}
+
+		if err := xdp.LockIP(targetMap, line); err != nil {
+			log.Printf("❌ Failed to import %s: %v", line, err)
+		} else {
+			count++
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("❌ Error reading lock list file %s: %v", filePath, err)
+	}
+
+	log.Printf("🛡️ Imported %d IPs/ranges from %s", count, filePath)
 }

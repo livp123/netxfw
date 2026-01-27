@@ -1,15 +1,16 @@
 # 命令行手册 (CLI Manual)
 
-`netxfw` 提供了一个简单的命令行界面，用于管理防火墙服务和操作 IP 黑名单。
+`netxfw` 提供了一个简单的命令行界面，用于管理防火墙服务和操作 IP 锁定列表。
 
 ## 命令概览
 
 | 命令 | 参数 | 描述 |
 | :--- | :--- | :--- |
 | `load xdp` | 无 | 启动服务，加载 BPF 程序到网卡 |
-| `lock` | `<IP>` | 将指定 IP (IPv4/IPv6) 加入黑名单 |
-| `unlock` | `<IP>` | 从黑名单中移除指定 IP |
-| `list` | 无 | 查看当前黑名单中的 IP 及其丢包统计 |
+| `lock` | `<IP>` | 将指定 IP (IPv4/IPv6) 加入锁定列表 |
+| `unlock` | `<IP>` | 从锁定列表中移除指定 IP |
+| `list` | 无 | 查看当前锁定列表中的 IP 及其丢包统计 |
+| `import` | `<FILE>` | 从文件批量导入 IP 到锁定列表 |
 | `unload xdp` | 无 | 提示如何卸载程序 |
 
 ---
@@ -39,14 +40,14 @@ sudo ./netxfw lock 2400:3200::1
 ```
 
 ### 3. 查看列表 (list)
-列出当前内核中生效的所有黑名单 IP，并显示每个 IP 触发的丢包总数。
+列出当前内核中生效的所有锁定列表 IP，并显示每个 IP 触发的丢包总数。
 
 ```bash
 sudo ./netxfw list
 ```
 **输出示例：**
 ```text
-🛡️ Currently blocked IPs and drop counts:
+🛡️ Currently locked IPs and drop counts:
  - [IPv4] 1.1.1.1: 42 drops
  - [IPv6] 2400:3200::1: 156 drops
 ```
@@ -56,4 +57,11 @@ sudo ./netxfw list
 
 ```bash
 sudo ./netxfw unlock 1.1.1.1
+```
+
+### 5. 批量导入 (import)
+从文本文件中批量读取 IP 或 CIDR 并加入锁定列表。
+
+```bash
+sudo ./netxfw import ips.txt
 ```

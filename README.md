@@ -87,27 +87,33 @@ sudo make install
 
 #### 启动服务
 ```bash
-# 启动 XDP 防火墙引擎
+# 方式 A：直接运行
 sudo netxfw load xdp
+
+# 方式 B：作为 Systemd 服务运行
+sudo systemctl start netxfw
+sudo systemctl enable netxfw
 ```
 
 #### 配置文件示例 (`/etc/netxfw/config.yaml`)
 ```yaml
-# 监控指标端口
+# Prometheus 指标端口
 metrics_port: 9100
 
-# 静态白名单 (永不拦截)
+# 白名单网段 (CIDR 格式)
 whitelist:
-  - 127.0.0.1
+  - 127.0.0.1/32
   - 192.168.1.0/24
-  - ::1
 
-# 动态规则定义 (即将支持)
+# 锁定列表网段 (CIDR 格式)
+lock_list_file: "/etc/netxfw/lock.conf"
+
+# 动态规则 (后续扩展)
 rules:
-  - name: "ssh-brute-force"
+  - name: "ssh_protection"
     port: 22
     threshold: 10
-    duration: 1h
+    duration: "1h"
 ```
 
 ### 3. 常用操作
@@ -117,7 +123,8 @@ rules:
 | `lock` | 封禁指定 IP/网段 | `sudo netxfw lock 1.2.3.4` |
 | `unlock` | 解封指定 IP/网段 | `sudo netxfw unlock 1.2.3.4` |
 | `list` | 查看当前封禁列表及统计 | `sudo netxfw list` |
-| `status` | 查看防火墙运行状态 | `sudo netxfw status` |
+| `import` | 从文件批量导入锁定列表 | `sudo netxfw import ips.txt` |
+| `unload` | 卸载 XDP 程序 | `sudo netxfw unload xdp` |
 
 ---
 

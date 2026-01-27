@@ -15,7 +15,11 @@ run: build
 
 install: build
 	sudo mkdir -p /etc/netxfw
-	sudo cp rules/default.yaml /etc/netxfw/config.yaml
+	if [ ! -f /etc/netxfw/config.yaml ]; then sudo cp rules/default.yaml /etc/netxfw/config.yaml; fi
 	sudo cp netxfw /usr/local/bin/
+	sudo cp netxfw.service /etc/systemd/system/
+	sudo systemctl daemon-reload
 	@echo "✅ Installed netxfw to /usr/local/bin/"
-	@echo "✅ Configuration file created at /etc/netxfw/config.yaml"
+	@echo "✅ Configuration file: /etc/netxfw/config.yaml"
+	@echo "✅ Systemd service: netxfw.service installed"
+	@echo "   Usage: sudo systemctl start netxfw"

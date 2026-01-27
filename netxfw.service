@@ -1,0 +1,13 @@
+[Unit]
+Description=NetXFW - eBPF/XDP Firewall Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/netxfw load xdp
+Restart=always
+RestartSec=5
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

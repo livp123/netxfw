@@ -7,9 +7,10 @@ import (
 )
 
 type Config struct {
-	Rules       []Rule   `yaml:"rules"`
-	Whitelist   []string `yaml:"whitelist"`
-	MetricsPort int      `yaml:"metrics_port"`
+	Rules        []Rule   `yaml:"rules"`
+	Whitelist    []string `yaml:"whitelist"`
+	LockListFile string   `yaml:"lock_list_file"`
+	MetricsPort  int      `yaml:"metrics_port"`
 }
 
 type Rule struct {

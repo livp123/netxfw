@@ -10,8 +10,8 @@ import (
 )
 
 /**
- * LockIP adds an IPv4 or IPv6 address or CIDR to the BPF blacklist.
- * LockIP 将 IPv4/IPv6 地址或 CIDR 网段添加到 BPF 黑名单中。
+ * LockIP adds an IPv4 or IPv6 address or CIDR to the BPF lock list.
+ * LockIP 将 IPv4/IPv6 地址或 CIDR 网段添加到 BPF 锁定列表中。
  */
 func LockIP(mapPtr *ebpf.Map, cidrStr string) error {
 	// Parse as CIDR or fallback to single IP / 尝试解析为 CIDR，失败则回退到单个 IP

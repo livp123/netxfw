@@ -20,5 +20,9 @@ whitelist:
   - "192.168.1.0/24"
   - "10.0.0.0/8"
 
+# 锁定列表配置：在此文件中的 IP 或网段将在启动时自动加载并拦截
+# 文件格式：每行一个 IP 或 CIDR
+lock_list_file: "/etc/netxfw/lock.conf"
+
 # Prometheus 指标服务监听端口
 metrics_port: 9100
