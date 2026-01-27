@@ -5,10 +5,6 @@ import (
 	"log"
 )
 
-func main() {
-	run()
-}
-
 func run() {
 	// ...
 	interfaces, err := xdp.GetPhysicalInterfaces()
@@ -26,6 +22,6 @@ func run() {
 		log.Fatalf("Attach XDP: %v", err)
 	}
 
-	// 阻塞运行，等待信号
-	select {}
+	// 封禁示例
+	xdp.BanIP(manager.Blacklist(), "192.168.1.100")
 }
