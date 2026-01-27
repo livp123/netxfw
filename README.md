@@ -36,10 +36,19 @@
 
 #### 方式 A：直接下载二进制文件（推荐）
 从 [Releases](https://github.com/livp123/netxfw/releases) 页面下载适用于您架构的最新版本：
+
+- **x86_64 (amd64)**:
+  ```bash
+  wget https://github.com/livp123/netxfw/releases/download/v0.2.2/netxfw_Linux_x86_64.tar.gz
+  ```
+- **ARM64 (aarch64)**:
+  ```bash
+  wget https://github.com/livp123/netxfw/releases/download/v0.2.2/netxfw_Linux_arm64.tar.gz
+  ```
+
+**安装**:
 ```bash
-# 以 amd64 为例
-wget https://github.com/livp123/netxfw/releases/download/v0.1.8/netxfw_Linux_x86_64.tar.gz
-tar -zxvf netxfw_Linux_x86_64.tar.gz
+tar -zxvf netxfw_Linux_*.tar.gz
 sudo mv netxfw /usr/local/bin/
 ```
 
@@ -54,7 +63,9 @@ sudo mv netxfw /usr/local/bin/
 - **Ubuntu / Debian**:
   ```bash
   sudo apt-get update
-  sudo apt-get install -y clang llvm libelf-dev libbpf-dev make gcc-multilib
+  sudo apt-get install -y clang llvm libelf-dev libbpf-dev make
+  # 如果是 x86_64 架构编译 eBPF
+  sudo apt-get install -y gcc-multilib 
   ```
 
 - **CentOS / RHEL / Fedora**:
