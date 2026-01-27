@@ -22,17 +22,36 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install dependencies
+      # - name: Install dependencies
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y clang llvm libelf-dev libbpf-dev
+      #     sudo apt-get install -y gcc-multilib || true
+      #     # Fix for missing asm/types.h in some environments
+      #     sudo ln -s /usr/include/x86_64-linux-gnu/asm /usr/include/asm || true
+      #     # Also link for specific architectures if needed
+      #     sudo mkdir -p /usr/include/asm
+      #     sudo cp -r /usr/include/x86_64-linux-gnu/asm/* /usr/include/asm/ || true
+      #     sudo apt-get install -y gcc-aarch64-linux-gnu || sudo apt-get install -y binutils-aarch64-linux-gnu
+
+      - name: Install BPF build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang llvm libelf-dev libbpf-dev
-          sudo apt-get install -y gcc-multilib || true
-          # Fix for missing asm/types.h in some environments
-          sudo ln -s /usr/include/x86_64-linux-gnu/asm /usr/include/asm || true
-          # Also link for specific architectures if needed
-          sudo mkdir -p /usr/include/asm
-          sudo cp -r /usr/include/x86_64-linux-gnu/asm/* /usr/include/asm/ || true
-          sudo apt-get install -y gcc-aarch64-linux-gnu || sudo apt-get install -y binutils-aarch64-linux-gnu
+          # Core dependencies for eBPF compilation
+          sudo apt-get install -y \
+              clang \
+              llvm \
+              libelf-dev \
+              libbpf-dev \
+              gcc \
+              linux-headers-generic \
+              linux-headers- $ (uname -r)
+          
+          # Optional: ARM64 cross-compilation support (for building arm64 binary on amd64 runner)
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+
+
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
