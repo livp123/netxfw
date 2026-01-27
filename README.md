@@ -44,10 +44,24 @@ sudo mv netxfw /usr/local/bin/
 ```
 
 #### 方式 B：从源码构建
+
 **环境要求**：
 - Linux Kernel >= 5.4 (推荐 5.10+)
 - Go >= 1.21
-- `clang`, `llvm`, `libelf-dev`, `libbpf-dev`, `make`
+
+**安装编译工具**：
+
+- **Ubuntu / Debian**:
+  ```bash
+  sudo apt-get update
+  sudo apt-get install -y clang llvm libelf-dev libbpf-dev make gcc-multilib
+  ```
+
+- **CentOS / RHEL / Fedora**:
+  ```bash
+  # CentOS 8+ / RHEL 8+
+  sudo dnf install -y clang llvm elfutils-libelf-devel libbpf-devel make gcc
+  ```
 
 **编译步骤**：
 ```bash
