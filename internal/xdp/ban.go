@@ -16,16 +16,26 @@ func BanIP(mapPtr *ebpf.Map, ipStr string) error {
 	if parsedIP == nil {
 		return fmt.Errorf("invalid IP address: %s", ipStr)
 	}
-
-	val := uint64(0) // Initial drop count is 0
-
+	val := uint64(0)
 	if ip4 := parsedIP.To4(); ip4 != nil {
-		// IPv4
 		key := binary.BigEndian.Uint32(ip4)
 		return mapPtr.Put(key, val)
 	}
+	var key [16]byte
+	copy(key[:], parsedIP.To16())
+	return mapPtr.Put(key, val)
+}
 
-	// IPv6
+func AllowIP(mapPtr *ebpf.Map, ipStr string) error {
+	parsedIP := net.ParseIP(ipStr)
+	if parsedIP == nil {
+		return fmt.Errorf("invalid IP address: %s", ipStr)
+	}
+	val := uint8(1)
+	if ip4 := parsedIP.To4(); ip4 != nil {
+		key := binary.BigEndian.Uint32(ip4)
+		return mapPtr.Put(key, val)
+	}
 	var key [16]byte
 	copy(key[:], parsedIP.To16())
 	return mapPtr.Put(key, val)

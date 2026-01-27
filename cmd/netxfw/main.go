@@ -98,6 +98,30 @@ func runServer() {
 		log.Fatalf("❌ Failed to attach XDP: %v", err)
 	}
 
+	// 加载白名单到 BPF Map
+	if cfg != nil && len(cfg.Whitelist) > 0 {
+		for _, ipStr := range cfg.Whitelist {
+			parsedIP := net.ParseIP(ipStr)
+			if parsedIP == nil {
+				log.Printf("⚠️ Invalid whitelist IP in config: %s", ipStr)
+				continue
+			}
+
+			var targetMap *ebpf.Map
+			if parsedIP.To4() != nil {
+				targetMap = manager.Whitelist()
+			} else {
+				targetMap = manager.Whitelist6()
+			}
+
+			if err := xdp.AllowIP(targetMap, ipStr); err != nil {
+				log.Printf("❌ Failed to add %s to whitelist: %v", ipStr, err)
+			} else {
+				log.Printf("⚪ Whitelisted: %s", ipStr)
+			}
+		}
+	}
+
 	// 启动指标服务
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())

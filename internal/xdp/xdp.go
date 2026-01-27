@@ -21,6 +21,8 @@ type Manager struct {
 	links      []link.Link
 	blacklist  *ebpf.Map
 	blacklist6 *ebpf.Map
+	whitelist  *ebpf.Map
+	whitelist6 *ebpf.Map
 	dropStats  *ebpf.Map
 }
 
@@ -38,6 +40,8 @@ func NewManager() (*Manager, error) {
 		objs:       objs,
 		blacklist:  objs.Blacklist,
 		blacklist6: objs.Blacklist6,
+		whitelist:  objs.Whitelist,
+		whitelist6: objs.Whitelist6,
 		dropStats:  objs.DropStats,
 	}, nil
 }
@@ -92,6 +96,14 @@ func (m *Manager) Close() {
 	}
 }
 
+func (m *Manager) Whitelist() *ebpf.Map {
+	return m.whitelist
+}
+
+func (m *Manager) Whitelist6() *ebpf.Map {
+	return m.whitelist6
+}
+
 func (m *Manager) Pin(path string) error {
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return err
@@ -99,11 +111,19 @@ func (m *Manager) Pin(path string) error {
 	if err := m.blacklist.Pin(path + "/blacklist"); err != nil {
 		return err
 	}
-	return m.blacklist6.Pin(path + "/blacklist6")
+	if err := m.blacklist6.Pin(path + "/blacklist6"); err != nil {
+		return err
+	}
+	if err := m.whitelist.Pin(path + "/whitelist"); err != nil {
+		return err
+	}
+	return m.whitelist6.Pin(path + "/whitelist6")
 }
 
 func (m *Manager) Unpin(path string) error {
 	_ = m.blacklist.Unpin()
 	_ = m.blacklist6.Unpin()
+	_ = m.whitelist.Unpin()
+	_ = m.whitelist6.Unpin()
 	return os.RemoveAll(path)
 }

@@ -65,6 +65,8 @@ type NetXfwMapSpecs struct {
 	Blacklist  *ebpf.MapSpec `ebpf:"blacklist"`
 	Blacklist6 *ebpf.MapSpec `ebpf:"blacklist6"`
 	DropStats  *ebpf.MapSpec `ebpf:"drop_stats"`
+	Whitelist  *ebpf.MapSpec `ebpf:"whitelist"`
+	Whitelist6 *ebpf.MapSpec `ebpf:"whitelist6"`
 }
 
 // NetXfwObjects contains all objects after they have been loaded into the kernel.
@@ -89,6 +91,8 @@ type NetXfwMaps struct {
 	Blacklist  *ebpf.Map `ebpf:"blacklist"`
 	Blacklist6 *ebpf.Map `ebpf:"blacklist6"`
 	DropStats  *ebpf.Map `ebpf:"drop_stats"`
+	Whitelist  *ebpf.Map `ebpf:"whitelist"`
+	Whitelist6 *ebpf.Map `ebpf:"whitelist6"`
 }
 
 func (m *NetXfwMaps) Close() error {
@@ -96,6 +100,8 @@ func (m *NetXfwMaps) Close() error {
 		m.Blacklist,
 		m.Blacklist6,
 		m.DropStats,
+		m.Whitelist,
+		m.Whitelist6,
 	)
 }
 

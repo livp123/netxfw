@@ -27,6 +27,30 @@ struct {
     __type(value, __u64);
 } drop_stats SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 65536);
+    __type(key, __u32);
+    __type(value, __u8);
+} whitelist SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 65536);
+    __type(key, struct in6_addr);
+    __type(value, __u8);
+} whitelist6 SEC(".maps");
+
+static inline int is_whitelisted(__u32 ip) {
+    __u8 *val = bpf_map_lookup_elem(&whitelist, &ip);
+    return val != NULL;
+}
+
+static inline int is_whitelisted6(struct in6_addr *ip) {
+    __u8 *val = bpf_map_lookup_elem(&whitelist6, ip);
+    return val != NULL;
+}
+
 static inline int is_blocked(__u32 ip) {
     __u64 *val = bpf_map_lookup_elem(&blacklist, &ip);
     return val != NULL;
@@ -53,6 +77,10 @@ int xdp_firewall(struct xdp_md *ctx) {
         if (data + sizeof(*eth) + sizeof(*ip) > data_end)
             return XDP_PASS;
 
+        if (is_whitelisted(ip->saddr)) {
+            return XDP_PASS;
+        }
+
         if (is_blocked(ip->saddr)) {
             __u64 *cnt = bpf_map_lookup_elem(&blacklist, &ip->saddr);
             if (cnt) {
@@ -70,6 +98,10 @@ int xdp_firewall(struct xdp_md *ctx) {
         struct ipv6hdr *ip6 = data + sizeof(*eth);
         if (data + sizeof(*eth) + sizeof(*ip6) > data_end)
             return XDP_PASS;
+
+        if (is_whitelisted6(&ip6->saddr)) {
+            return XDP_PASS;
+        }
 
         if (is_blocked6(&ip6->saddr)) {
             __u64 *cnt = bpf_map_lookup_elem(&blacklist6, &ip6->saddr);

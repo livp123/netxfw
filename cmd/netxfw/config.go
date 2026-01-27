@@ -6,7 +6,8 @@ import (
 )
 
 type Config struct {
-	Rules []Rule `yaml:"rules"`
+	Rules     []Rule   `yaml:"rules"`
+	Whitelist []string `yaml:"whitelist"`
 }
 
 type Rule struct {
