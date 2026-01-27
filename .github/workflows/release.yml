@@ -45,7 +45,7 @@ jobs:
               libbpf-dev \
               gcc \
               linux-headers-generic \
-              linux-headers- $ (uname -r)
+              linux-headers-$(uname -r)
           
           # Optional: ARM64 cross-compilation support (for building arm64 binary on amd64 runner)
           sudo apt-get install -y gcc-aarch64-linux-gnu
