@@ -14,6 +14,7 @@
 ## ✨ 核心特性
 
 - 🚀 **极致性能**：在网卡驱动层（XDP）直接丢弃恶意包，绕过内核网络栈，CPU 占用极低。
+- ⏱️ **高精度过期控制**：eBPF Map 原生支持 `expires_at` 时间戳，内核态毫秒级精准判定，支持 `--ttl` 动态下发。
 - 🌍 **全协议支持**：原生支持 IPv4 和 IPv6，支持 CIDR 网段封禁。
 - � **插件化架构**：支持动态加载插件（如 `netxfw-plugins-port`），轻松扩展高级过滤逻辑。
 - 🛡️ **高级规则控制**：支持特定 IP/网段访问特定端口（IP+Port），支持默认拒绝（Default Deny）策略。
@@ -27,7 +28,9 @@
 
 `netxfw` 由三部分组成：
 1.  **内核态 (eBPF/XDP)**：高性能数据面，负责根据白名单、锁定列表及端口规则进行极速过滤。
+    - **时间戳判定**：Map 值中包含 `expires_at` (基于 `bpf_ktime_get_ns()`)，在内核态直接判定规则是否过期，实现“零延迟”失效。
 2.  **用户态 (Go)**：控制面，负责规则解析、网卡管理、插件调度及指标暴露。
+    - **自动清理**：Daemon 进程会定期（30s）扫描并物理移除 Map 中已过期的条目，释放内存。
 3.  **持久化层**：支持 YAML 同步，确保重启后规则不丢失。
 
 ---
@@ -63,12 +66,12 @@ sudo ./netxfw daemon
 | 命令 | 说明 | 示例 |
 | :--- | :--- | :--- |
 | `lock` | 封禁指定 IP/网段 | `sudo ./netxfw lock 1.2.3.4` |
-| `lock --ttl` | 临时封禁 IP | `sudo ./netxfw lock 1.2.3.4 --ttl 1h` |
+| `lock --ttl` | 临时封禁 (支持 h/m/s) | `sudo ./netxfw lock 1.2.3.4 --ttl 1h30m` |
 | `unlock` | 解封指定 IP/网段 | `sudo ./netxfw unlock 1.2.3.4` |
 | `allow` | 加入白名单 | `sudo ./netxfw allow 1.2.3.4` |
 | `allow --ttl` | 临时白名单 | `sudo ./netxfw allow 1.2.3.4 --ttl 30m` |
 | `allow --port` | 特定 IP 访问特定端口 | `sudo ./netxfw allow 10.0.0.5 --port 80/tcp` |
-| `allow --port --ttl` | 临时允许访问特定端口 | `sudo ./netxfw allow 10.0.0.5 --port 80/tcp --ttl 1h` |
+| `allow --port --ttl` | 临时允许访问端口 | `sudo ./netxfw allow 10.0.0.5 --port 80/tcp --ttl 1h` |
 | `list` | 查看当前规则及统计 | `sudo ./netxfw list` |
 | `plugin list` | 查看可用插件 | `sudo ./netxfw plugin list` |
 
