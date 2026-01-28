@@ -59,7 +59,9 @@ func NewManager() (*Manager, error) {
 
 /**
  * Attach mounts the XDP program to the specified network interfaces.
+ * It tries Offload mode, then Native mode, and finally Generic mode as fallbacks.
  * Attach 将 XDP 程序挂载到指定的网络接口。
+ * 按顺序尝试 Offload 模式、Native 模式，最后是 Generic 模式。
  */
 func (m *Manager) Attach(interfaces []string) error {
 	for _, name := range interfaces {
@@ -69,17 +71,37 @@ func (m *Manager) Attach(interfaces []string) error {
 			continue
 		}
 
-		// Attach XDP program / 挂载 XDP 程序
-		l, err := link.AttachXDP(link.XDPOptions{
-			Program:   m.objs.XdpFirewall,
-			Interface: iface.Index,
-		})
-		if err != nil {
-			log.Printf("Failed to attach XDP on %s: %v", name, err)
-			continue
+		// Try different XDP modes in order: Offload -> Native -> Generic
+		// 按顺序尝试不同的 XDP 模式：Offload -> Native -> Generic
+		modes := []struct {
+			name string
+			flag link.XDPAttachFlags
+		}{
+			{"Offload", link.XDPOffloadMode},
+			{"Native", link.XDPDriverMode},
+			{"Generic", link.XDPGenericMode},
 		}
-		m.links = append(m.links, l)
-		log.Printf("✅ Attached XDP on %s", name)
+
+		var attached bool
+		for _, mode := range modes {
+			l, err := link.AttachXDP(link.XDPOptions{
+				Program:   m.objs.XdpFirewall,
+				Interface: iface.Index,
+				Flags:     mode.flag,
+			})
+
+			if err == nil {
+				m.links = append(m.links, l)
+				log.Printf("✅ Attached XDP on %s (Mode: %s)", name, mode.name)
+				attached = true
+				break
+			}
+			log.Printf("⚠️  Failed to attach XDP on %s using %s mode: %v", name, mode.name, err)
+		}
+
+		if !attached {
+			log.Printf("❌ Failed to attach XDP on %s with any mode", name)
+		}
 	}
 	return nil
 }
